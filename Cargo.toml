@@ -1,0 +1,12 @@
+[package]
+name = "image-dl"
+version = "0.1.0"
+authors = ["Mike <michaelpulliam1@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+select = "0.4"
+reqwest = { version = "0.10", features = ["blocking"] }
+url = "2.1"
