@@ -7,8 +7,8 @@ use select::predicate::{Class, Name, Attr, And};
 // Need a different parser for boorus. 
 // This one's only for gelbooru, where they do all sorts of strange stuff >-<
 
-pub fn get_image_links(url: Url) -> Vec<Url> {
-	let mut response = reqwest::blocking::get(url.as_str()).unwrap();
+pub fn get_image_links(url: Url, client: reqwest::blocking::Client) -> Vec<Url> {
+	let mut response = client.get(url.as_str()).send().unwrap();
 	let mut body = String::new();
 	response.read_to_string(&mut body).unwrap();
 	let dom = Document::from(body.as_str());
@@ -18,7 +18,7 @@ pub fn get_image_links(url: Url) -> Vec<Url> {
 		let mut post_body = String::new(); // This next line is nasty, but for some reason they don't include the protocol in their hrefs
 		let mut post_url = Url::parse(format!("{}{}", "https:", node.parent().unwrap().attr("href").unwrap()).as_str()).unwrap();
 		println!("{}", post_url.as_str());
-		response = reqwest::blocking::get(post_url.as_str()).unwrap();
+		response = client.get(post_url.as_str()).send().unwrap();
 		// for boorus this should only be one element...
 		response.read_to_string(&mut post_body).unwrap();
 		let post_dom = Document::from(post_body.as_str());
