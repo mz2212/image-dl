@@ -6,6 +6,7 @@ use std::env;
 use url::Url;
 use std::fs::OpenOptions;
 use std::io;
+use reqwest::header::REFERER;
 
 mod parser;
 mod booru;
@@ -14,7 +15,8 @@ mod derpi;
 mod kusu;
 mod behoimi;
 
-static USER_AGENT: &str = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:77.0) Gecko/20190101 Firefox/77.0";
+static UA: &str = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:77.0) Gecko/20190101 Firefox/77.0";
+static REF: &str = "http://behoimi.org/post/";
 
 // ffs I'm duplicating a project: https://bionus.github.io/imgbrd-grabber/
 // Just use that instead. *cries in spagett code*
@@ -24,8 +26,11 @@ fn main() {
     let url = Url::parse(input.as_str()).unwrap();
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent(USER_AGENT)
+        .user_agent(UA)
         .build().unwrap();
+
+    let image_client = client.clone();
+    let mut is_behoimi = false;
 
     let links = match url.domain().unwrap() {
         "www.steamcardexchange.net" => parser::get_image_links(url, "element-link-right", client),
@@ -45,7 +50,10 @@ fn main() {
         "gelbooru.com" => gelbooru::get_image_links(url, client),
         "derpibooru.org" => derpi::get_image_links(url, client),
         "kusubooru.com" => kusu::get_image_links(url, client),
-        "behoimi.org" => behoimi::get_image_links(url, client),
+        "behoimi.org" => {
+            is_behoimi = true; // These wankers really don't play nice
+            behoimi::get_image_links(url, client)
+        }, 
         //"imgur.com" => imgur::get_image_links(url), // imgur does some really janky hotloading, it's gonna get fancy...
         //"www.bittersweetcandybowl.com" => candy::get_image_links(url, client), // I need to find a way to genericify these, they're mostly the same...
         //"www.furaffinity.net" => furaffinity::get_image_links(url, client), // bugger, thought this one was going to be easy.
@@ -56,13 +64,17 @@ fn main() {
     for link in links {
         let filename = link.path_segments().unwrap().last().unwrap();
         println!("{}", filename);
-/*
+
         let mut file = match OpenOptions::new().write(true).create_new(true).open(filename) {
             Err(_) => continue,
             Ok(f) => f,
         };
-
-        let mut image = client.get(link.as_str()).send().unwrap();
-        io::copy(&mut image, &mut file).unwrap();*/
+        let mut image;
+        if is_behoimi {
+            image = image_client.get(link.as_str()).header(REFERER, REF).send().unwrap();
+        } else {
+            image = image_client.get(link.as_str()).send().unwrap();
+        }
+        io::copy(&mut image, &mut file).unwrap();
     }
 }
